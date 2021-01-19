@@ -1,0 +1,41 @@
+<html>
+<head>
+
+
+</script>
+
+<link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<title>chat test</title>
+</head>
+<body>
+<form id="form">
+	<input type="text" id="sendtext" size="64" autofoucus/>
+	<input type="submit" value="send" />
+</form>
+<pre id="output"></pre>
+
+<script type="text/javascript">
+	var sendtext = document.getElementById('sendtext');
+	var output = document.getElementById('output');
+
+	var socket = new WebSocket("ws://" + window.location.host + "/ws");
+
+document.getElementById("form").onsubmit = function () {
+        if (!sendtext.value) {
+            	return false;
+        }
+        	socket.send(sendtext.value);
+        	sendtext.value = "";
+        	return false;
+    	};
+	socket.onopen = function() {
+		output.innerHTML += "connection OK\n";
+	}
+
+	socket.onmessage = function(e){
+		output.innerHTML += e.data + "\n";
+	}
+</script>
+</body>
+</html>
