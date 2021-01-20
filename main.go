@@ -2,6 +2,8 @@ package main
 
 import(
 	"log"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	//"bytes"
 	"net/http"
 	//"time"
@@ -11,6 +13,10 @@ import(
 //現在、切断された際にクライアントが削除されていない。
 //
 
+type User struct{
+	ID int
+	Name string
+}
 
 //あまり使わないほうが良いが、とりあえず動きを確認するためにグローバルで実装
 //makeはnewとは違い初期化をする,slice,map,channelのみ
@@ -76,6 +82,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 
 	//clients(メッセージの送信先)の追加
 	clients[ws] = true
+	dbsel(ws)
 
 	for{
 		
@@ -89,7 +96,42 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+func dbsel(ws *websocket.Conn){
+	db,err := sql.Open("mysql","root@/sample_db")
+	if err != nil{
+		panic(err.Error())
+	}
+	defer db.Close()
 
+	rows,err := db.Query("SELECT * FROM users")
+	if err != nil{
+		panic(err.Error())
+	}
+
+	defer rows.Close()
+
+	for rows.Next(){
+		var user User
+		err := rows.Scan(&user.ID,&user.Name)
+		if err != nil {
+			panic(err.Error())
+		}
+		historymsg := []byte(user.Name)
+		
+		
+		w, err := ws.NextWriter(websocket.TextMessage)
+		if err != nil {
+			log.Printf("error: %v", err)
+		}else{
+		
+			w.Write(historymsg)
+			if err := w.Close(); err != nil{
+				return
+			}
+		}
+	}
+	return
+}
 
 func main(){
 	/*この書き方だと外部のCSS,jsファイルが読み取れなかった
