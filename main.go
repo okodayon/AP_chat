@@ -8,6 +8,7 @@ import(
 	"net/http"
 	//"time"
 	"github.com/gorilla/websocket"
+	"fmt"
 )
 
 //現在、切断された際にクライアントが削除されていない。
@@ -44,26 +45,31 @@ func HandleMessages(){
 						return
 					}
 				}
-			//w.Write(msg)
-			//if err := w.Close(); err != nil{
-			//	return
 			}
-		/*
-		case <-ticker.C:
-			for client := range clients{
-				client.SetWriteDeadline(time.Now().Add(10*time.Second))
-				if err := client.WriteMessage(websocket.PingMessage, nil); err != nil {
-					return
+			db, err := sql.Open("mysql", "root:@/sample_db")
+				if err != nil {
+					panic(err.Error())
 				}
-			}
-			*/
-			//w.Write(msg)
-			/*
-			n := len(msg)
-			for i := 0; i < n; i++ {
-				w.Write(msg)
-			}
-			*/
+				defer db.Close()
+
+				stmtInsert, err := db.Prepare("INSERT INTO users(name) VALUES(?)")
+				if err != nil {
+					panic(err.Error())
+				}
+				defer stmtInsert.Close()
+
+				result, err := stmtInsert.Exec(msg)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				lastInsertID, err := result.LastInsertId()
+				if err != nil{
+					panic(err.Error())
+				}
+				fmt.Println(lastInsertID)
+
+
 		}
 	}
 }
@@ -95,6 +101,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 		broadcast <- message
 	}
 }
+
 
 func dbsel(ws *websocket.Conn){
 	db,err := sql.Open("mysql","root@/sample_db")
