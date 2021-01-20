@@ -84,7 +84,7 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 
 
 	//関数が戻ってきたとき(return)にdeferを使いwebsocketを閉じる
-	defer ws.Close()
+	//defer ws.Close()
 
 	//clients(メッセージの送信先)の追加
 	clients[ws] = true
@@ -95,7 +95,10 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 		_, message, err := ws.ReadMessage()
 		if err != nil{
 			log.Printf("readerr:%v",err)
-			break
+			ws.Close()
+			delete(clients,ws)
+			//break
+			return
 		}
 
 		broadcast <- message
@@ -156,12 +159,12 @@ func main(){
 
 	go HandleMessages()
 
-	http.ListenAndServe("localhost:8080",nil)
+	//http.ListenAndServe("localhost:8080",nil)
 
 	//鯖を建てる。建たなかったときにエラーを出力
-	//err := http.ListenAndServe("172.16.80.55:8080",nil)
-	//if err != nil{
-	//	log.Fatal("ListenAndServe:",err)
-	//}
+	err := http.ListenAndServe("172.16.80.55:8080",nil)
+	if err != nil{
+		log.Fatal("ListenAndServe:",err)
+	}
 
 }
