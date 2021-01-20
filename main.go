@@ -84,8 +84,10 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 
 
 	//関数が戻ってきたとき(return)にdeferを使いwebsocketを閉じる
-	//defer ws.Close()
-
+	defer func() {
+		ws.Close()
+		delete(clients,ws)
+	}()
 	//clients(メッセージの送信先)の追加
 	clients[ws] = true
 	dbsel(ws)
@@ -95,8 +97,11 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 		_, message, err := ws.ReadMessage()
 		if err != nil{
 			log.Printf("readerr:%v",err)
+			//panicにも対応できるということなのでdeferに変更してみた↑
+			/*
 			ws.Close()
 			delete(clients,ws)
+			*/
 			//break
 			return
 		}
