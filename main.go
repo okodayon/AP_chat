@@ -4,14 +4,11 @@ import(
 	"log"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	//"bytes"
 	"net/http"
 	"time"
 	"github.com/gorilla/websocket"
 )
 
-//現在、切断された際にクライアントが削除されていない。
-//
 
 type User struct{
 	ID int
@@ -109,14 +106,12 @@ func dbsel(ws *websocket.Conn){
 		if err != nil {
 			panic(err.Error())
 		}
-		//historymsg := []byte(user.Name)
 		
 		
 		w, err := ws.NextWriter(websocket.TextMessage)
 		if err != nil {
 			log.Printf("error: %v", err)
 		}else{
-			//w.Write(historymsg)
 			w.Write(user.CHAT)
 			if err := w.Close(); err != nil{
 				return
