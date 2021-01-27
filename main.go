@@ -2,22 +2,11 @@ package main
 
 import(
 	"log"
-	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 	"net/http"
-	"time"
 	"github.com/gorilla/websocket"
 )
 
 
-type User struct{
-	ID int
-	//CHAT string
-	CHAT []byte
-	TIME time.Time
-}
-
-//あまり使わないほうが良いが、とりあえず動きを確認するためにグローバルで実装
 //makeはnewとは違い初期化をする,slice,map,channelのみ
 var clients = make(map[*websocket.Conn]bool)//クライアントの追加,削除用
 var broadcast = make(chan []byte)//実際にメッセージのやり取りを行うためのチャネル
@@ -43,7 +32,6 @@ func HandleMessages(){
 					}
 				}
 			}
-			dbins(msg)
 		}
 	}
 }
@@ -64,7 +52,6 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 	}()
 	//clients(メッセージの送信先)の追加
 	clients[ws] = true
-	dbsel(ws)
 
 	for{
 		
@@ -84,69 +71,6 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-
-func dbsel(ws *websocket.Conn){
-	db,err := sql.Open("mysql","root@/chatdata?parseTime=true&loc=Asia%2FTokyo")
-	if err != nil{
-		panic(err.Error())
-	}
-	defer db.Close()
-
-	rows,err := db.Query("SELECT * FROM users")
-	if err != nil{
-		panic(err.Error())
-	}
-
-	defer rows.Close()
-
-	for rows.Next(){
-		var user User
-		//err := rows.Scan(&user.ID,&user.Name)
-		err := rows.Scan(&user.ID,&user.CHAT,&user.TIME)
-		if err != nil {
-			panic(err.Error())
-		}
-		
-		
-		w, err := ws.NextWriter(websocket.TextMessage)
-		if err != nil {
-			log.Printf("error: %v", err)
-		}else{
-			w.Write(user.CHAT)
-			if err := w.Close(); err != nil{
-				return
-			}
-		}
-	}
-	return
-}
-
-func dbins(msg []byte){
-	//t := time.Now()
-	db, err := sql.Open("mysql", "root:@/chatdata?parseTime=true&loc=Asia%2FTokyo")
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
-
-	stmtInsert, err := db.Prepare("INSERT INTO users(chat) VALUES(?)")
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stmtInsert.Close()
-
-	result, err := stmtInsert.Exec(msg)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	lastInsertID, err := result.LastInsertId()
-	if err != nil{
-		panic(err.Error())
-	}
-	//log.Println(lastInsertID,t.Hour(),":",t.Minute())
-	log.Println(lastInsertID)
-}
 
 func main(){
 	/*この書き方だと外部のCSS,jsファイルが読み取れなかった
