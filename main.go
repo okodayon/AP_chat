@@ -169,9 +169,11 @@ func main(){
 
 	go HandleMessages()
 
+	//localhostで立ち上げる場合
 	//http.ListenAndServe("localhost:8080",nil)
 
 	//鯖を建てる。建たなかったときにエラーを出力
+	//ローカルネットワークでテストするとき用
 	err := http.ListenAndServe("172.16.80.55:8080",nil)
 	if err != nil{
 		log.Fatal("ListenAndServe:",err)
