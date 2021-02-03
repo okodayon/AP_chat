@@ -1,3 +1,15 @@
-h1{
-border-bottom: solid 3px black;
-}
+html{background-color:#cec;}
+
+body{margin:-20 200 -40 200;
+     background-color:#eeeeee;}
+
+#form{position:absolute; bottom:70px;
+      margin-left:130px;}
+
+#sendtext{height:30px;
+          width:700px;}
+
+#submit{height:30px;
+        width:60px;}
+
+
