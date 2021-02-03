@@ -6,12 +6,12 @@
 
 <link rel="stylesheet" href="style.css">
 <meta charset="utf-8">
-<title>chat test</title>
+<title>1:1chat</title>
 </head>
 <body>
 <form id="form">
 	<input type="text" id="sendtext" size="64" autofoucus/>
-	<input type="submit" value="send" />
+	<input type="submit" id="submit" value="送信" />
 </form>
 <pre id="output"></pre>
 
@@ -20,17 +20,22 @@
 	var output = document.getElementById('output');
 
 	var socket = new WebSocket("ws://" + window.location.host + "/ws");
+        
+	output.style.fontSize = "xx-large";
+	output.style.textAlign = "center";
+	output.style.padding = "50px 0px 0px 20px";
+	output.style.textIndent = "10px";
 
 document.getElementById("form").onsubmit = function () {
         if (!sendtext.value) {
             	return false;
         }
-        	socket.send(sendtext.value);
-        	sendtext.value = "";
-        	return false;
+		socket.send(sendtext.value);
+                sendtext.value = "";
+                return false;
     	};
 	socket.onopen = function() {
-		output.innerHTML += "connection OK\n";
+		output.innerHTML += "チャット開始\n";
 	}
 
 	socket.onmessage = function(e){
