@@ -2,15 +2,20 @@ package main
 
 import(
 	"log"
-	//"bytes"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	"net/http"
-	//"time"
+	"time"
 	"github.com/gorilla/websocket"
 )
 
-//現在、切断された際にクライアントが削除されていない。
-//
 
+type User struct{
+	ID int
+	//CHAT string
+	CHAT []byte
+	TIME time.Time
+}
 
 //あまり使わないほうが良いが、とりあえず動きを確認するためにグローバルで実装
 //makeはnewとは違い初期化をする,slice,map,channelのみ
@@ -21,7 +26,6 @@ var upgrader = websocket.Upgrader{}//HTTP通信からwebsocketにアップグレ
 
 
 func HandleMessages(){
-	//ticker := time.NewTicker(((60 * time.Second)*9)/10)
 	for {
 	select{
 		case msg := <- broadcast:
@@ -38,26 +42,8 @@ func HandleMessages(){
 						return
 					}
 				}
-			//w.Write(msg)
-			//if err := w.Close(); err != nil{
-			//	return
 			}
-		/*
-		case <-ticker.C:
-			for client := range clients{
-				client.SetWriteDeadline(time.Now().Add(10*time.Second))
-				if err := client.WriteMessage(websocket.PingMessage, nil); err != nil {
-					return
-				}
-			}
-			*/
-			//w.Write(msg)
-			/*
-			n := len(msg)
-			for i := 0; i < n; i++ {
-				w.Write(msg)
-			}
-			*/
+			dbins(msg)
 		}
 	}
 }
@@ -72,17 +58,26 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 
 
 	//関数が戻ってきたとき(return)にdeferを使いwebsocketを閉じる
-	defer ws.Close()
-
+	defer func() {
+		ws.Close()
+		delete(clients,ws)
+	}()
 	//clients(メッセージの送信先)の追加
 	clients[ws] = true
+	dbsel(ws)
 
 	for{
 		
 		_, message, err := ws.ReadMessage()
 		if err != nil{
 			log.Printf("readerr:%v",err)
-			break
+			//panicにも対応できるということなのでdeferに変更してみた↑
+			/*
+			ws.Close()
+			delete(clients,ws)
+			*/
+			//break
+			return
 		}
 
 		broadcast <- message
@@ -90,6 +85,68 @@ func HandleConnection(w http.ResponseWriter, r *http.Request){
 }
 
 
+func dbsel(ws *websocket.Conn){
+	db,err := sql.Open("mysql","root@/chatdata?parseTime=true&loc=Asia%2FTokyo")
+	if err != nil{
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	rows,err := db.Query("SELECT * FROM users")
+	if err != nil{
+		panic(err.Error())
+	}
+
+	defer rows.Close()
+
+	for rows.Next(){
+		var user User
+		//err := rows.Scan(&user.ID,&user.Name)
+		err := rows.Scan(&user.ID,&user.CHAT,&user.TIME)
+		if err != nil {
+			panic(err.Error())
+		}
+		
+		
+		w, err := ws.NextWriter(websocket.TextMessage)
+		if err != nil {
+			log.Printf("error: %v", err)
+		}else{
+			w.Write(user.CHAT)
+			if err := w.Close(); err != nil{
+				return
+			}
+		}
+	}
+	return
+}
+
+func dbins(msg []byte){
+	//t := time.Now()
+	db, err := sql.Open("mysql", "root:@/chatdata?parseTime=true&loc=Asia%2FTokyo")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	stmtInsert, err := db.Prepare("INSERT INTO users(chat) VALUES(?)")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer stmtInsert.Close()
+
+	result, err := stmtInsert.Exec(msg)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	lastInsertID, err := result.LastInsertId()
+	if err != nil{
+		panic(err.Error())
+	}
+	//log.Println(lastInsertID,t.Hour(),":",t.Minute())
+	log.Println(lastInsertID)
+}
 
 func main(){
 	/*この書き方だと外部のCSS,jsファイルが読み取れなかった
@@ -107,12 +164,14 @@ func main(){
 
 	go HandleMessages()
 
-	http.ListenAndServe("localhost:8080",nil)
+	//localhostで立ち上げる場合
+	//http.ListenAndServe("localhost:8080",nil)
 
 	//鯖を建てる。建たなかったときにエラーを出力
-	//err := http.ListenAndServe("172.16.80.55:8080",nil)
-	//if err != nil{
-	//	log.Fatal("ListenAndServe:",err)
-	//}
+	//ローカルネットワークでテストするとき用
+	err := http.ListenAndServe("172.16.80.55:8080",nil)
+	if err != nil{
+		log.Fatal("ListenAndServe:",err)
+	}
 
 }
